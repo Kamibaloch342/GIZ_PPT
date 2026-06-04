@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFLT Presentation Deck - Light Theme</title>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #F8FAFC;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useCallback, useEffect } = React;
+
+        // --- Light Theme Colors ---
+        const BG = "#F8FAFC";
+        const BG2 = "#E2E8F0";
+        const TEXT = "#0F172A";
+        const GOLD = "#B45309";
+        const GOLD2 = "#D97706";
+        const CARD_BG = "rgba(255,255,255,0.85)";
+        const CARD_BORDER = "rgba(0,0,0,0.06)";
+
+        const globalStyle = `
+      @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+      * { box-sizing: border-box; }
+      body, html { margin:0; padding:0; overflow:hidden; background:${BG}; font-family:'Montserrat',sans-serif; color: ${TEXT}; }
+      
+      .slide-in { animation: slideIn 0.55s cubic-bezier(0.4,0,0.2,1) both; }
+      .slide-out { animation: slideOut 0.35s cubic-bezier(0.4,0,0.2,1) both; }
+      @keyframes slideIn { from { opacity:0; transform:translateX(48px) } to { opacity:1; transform:none } }
+      @keyframes slideOut { from { opacity:1; transform:none } to { opacity:0; transform:translateX(-48px) } }
+      
+      .rev1 { animation: revUp 0.5s ease 0.1s both; }
+      .rev2 { animation: revUp 0.5s ease 0.2s both; }
+      .rev3 { animation: revUp 0.5s ease 0.32s both; }
+      .rev4 { animation: revUp 0.5s ease 0.44s both; }
+      .rev5 { animation: revUp 0.5s ease 0.56s both; }
+      .rev6 { animation: revUp 0.5s ease 0.68s both; }
+      .rev7 { animation: revUp 0.5s ease 0.80s both; }
+      .rev8 { animation: revUp 0.5s ease 0.92s both; }
+      @keyframes revUp { from { opacity:0; transform:translateY(22px) } to { opacity:1; transform:none } }
+      
+      .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; cursor:default; }
+      .card-hover:hover { transform: translateY(-3px); border-color: rgba(180,83,9,0.3) !important; box-shadow: 0 12px 30px rgba(0,0,0,0.06) !important; }
+      
+      .prog-fill { transition: width 1.1s cubic-bezier(0.4,0,0.2,1) 0.6s; }
+      .gold-anim { transition: width 0.9s ease 0.5s; }
+      .float { animation: floatY 5s ease-in-out infinite; }
+      @keyframes floatY { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+      
+      .nav-btn { transition: background 0.2s, border-color 0.2s, color 0.2s; cursor:pointer; }
+      .nav-btn:hover { background: rgba(180,83,9,0.1) !important; border-color: ${GOLD} !important; color: ${GOLD} !important; }
+      .nav-dot-el { transition: width 0.3s ease, background 0.3s ease; cursor:pointer; }
+      
+      .g-arrow-btn { transition: background 0.2s, border-color 0.2s; cursor:pointer; }
+      .g-arrow-btn:hover { background: rgba(255,255,255,1) !important; border-color: ${GOLD} !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+      
+      ::-webkit-scrollbar { width:4px; }
+      ::-webkit-scrollbar-track { background:transparent; }
+      ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:2px; }
+    `;
+
+        // ── helpers ──────────────────────────────────────────────────────────────────
+        const card = (extra = {}) => ({
+            background: CARD_BG,
+            border: `1px solid ${CARD_BORDER}`,
+            borderRadius: 14,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+            backdropFilter: "blur(10px)",
+            ...extra,
+        });
+
+        const GoldLine = ({ animKey }) => (
+            <div key={animKey} className="gold-anim" style={{
+                height: 3, borderRadius: 2,
+                background: `linear-gradient(90deg,${GOLD},${GOLD2},transparent)`,
+                width: animKey != null ? 80 : 0,
+            }} />
+        );
+
+        const Eyebrow = ({ children }) => (
+            <div style={{
+                display: "flex", alignItems: "center", gap: 8, fontSize: 10, fontWeight: 700,
+                letterSpacing: "0.22em", textTransform: "uppercase", color: GOLD, marginBottom: 10
+            }}>
+                <div style={{ width: 20, height: 2, background: GOLD, borderRadius: 1 }} />
+                {children}
+            </div>
+        );
+
+        const Badge = ({ children }) => (
+            <span style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                background: "rgba(180,83,9,0.08)", border: `1px solid rgba(180,83,9,0.2)`,
+                borderRadius: 999, padding: "4px 14px", fontSize: 10, fontWeight: 800,
+                letterSpacing: "0.1em", textTransform: "uppercase", color: GOLD
+            }}>
+                {children}
+            </span>
+        );
+
+        const StatBlock = ({ num, label, size = 40 }) => (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 4 }}>
+                <div style={{ fontSize: size, fontWeight: 900, color: GOLD, lineHeight: 1 }}>{num}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", opacity: .6, color: TEXT }}>{label}</div>
+            </div>
+        );
+
+        const InfoRow = ({ icon, children }) => (
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 12 }}>
+                <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+                <span style={{ opacity: .8, fontWeight: 600, color: TEXT, lineHeight: 1.55 }}>{children}</span>
+            </div>
+        );
+
+        const ProgBar = ({ pct, animKey }) => (
+            <div style={{ height: 5, background: "rgba(0,0,0,0.06)", borderRadius: 3, overflow: "hidden" }}>
+                <div key={animKey} className="prog-fill" style={{
+                    height: "100%", borderRadius: 3,
+                    background: `linear-gradient(90deg,${GOLD},${GOLD2})`,
+                    width: animKey != null ? `${pct}%` : 0,
+                }} />
+            </div>
+        );
+
+        // ── CONFIG DATA ─────────────────────────────────────────────────────────────
+
+        // Map each camp to the photos stored in its respective folder
+        const CAMP_IMAGES = {
+            sanghar: ["./sanghar_camp/1.jpg", "./sanghar_camp/2.jpg", "./sanghar_camp/3.jpg", "./sanghar_camp/4.jpg", "./sanghar_camp/5.jpg", "./sanghar_camp/6.jpg", "./sanghar_camp/7.jpg", "./sanghar_camp/8.jpg", "./sanghar_camp/9.jpg", "./sanghar_camp/10.jpg", "./sanghar_camp/11.jpg", "./sanghar_camp/12.jpg"],
+            thatta: ["./thatta_camp/1.jpg", "./thatta_camp/2.jpg", "./thatta_camp/3.jpg", "./thatta_camp/4.jpg", "./thatta_camp/5.jpg", "./thatta_camp/6.jpg", "./thatta_camp/7.jpg", "./thatta_camp/8.jpg", "./thatta_camp/9.jpg"],
+            badin: ["./badin_camp/1.jpg", "./badin_camp/2.jpg", "./badin_camp/3.jpg", "./badin_camp/4.jpg", "./badin_camp/5.jpg", "./badin_camp/6.jpg", "./badin_camp/7.jpg", "./badin_camp/8.jpg", "./badin_camp/9.jpg", "./badin_camp/10.jpg", "./badin_camp/11.jpg", "./badin_camp/12.jpg", "./badin_camp/13.jpg", "./badin_camp/14.jpg", "./badin_camp/15.jpg", "./badin_camp/16.jpg"],
+            nawabshah: ["./nawabshah_camp/1.jpg", "./nawabshah_camp/2.jpg", "./nawabshah_camp/3.jpg", "./nawabshah_camp/4.jpg", "./nawabshah_camp/5.jpg", "./nawabshah_camp/6.jpg", "./nawabshah_camp/7.jpg", "./nawabshah_camp/8.jpg", "./nawabshah_camp/9.jpg", "./nawabshah_camp/10.jpg", "./nawabshah_camp/11.jpg", "./nawabshah_camp/12.jpg"]
+        };
+
+        const CAMPS = [
+            {
+                id: "sanghar", district: "SANGHAR", university: "Shaheed Benazir Bhutto University",
+                campus: "Sanghar Campus", trainers: "84", trainerNote: "(12M + 72F)",
+                totDays: "3 Days ToT", dates: "6 – 11 April 2026", target: "3,940"
+            },
+            {
+                id: "thatta", district: "THATTA", university: "University of Sindh",
+                campus: "Thatta Campus", trainers: "86", trainerNote: "(74 students + 12 permanent)",
+                totDays: "3 Days ToT", dates: "13 – 18 April 2026", target: "3,800"
+            },
+            {
+                id: "badin", district: "BADIN", university: "University of Sindh",
+                campus: "Laar Campus", trainers: "84", trainerNote: "",
+                totDays: "3 Days ToT", dates: "29 Apr – 4 May 2026", target: "7,500"
+            },
+            {
+                id: "nawabshah", district: "NAWABSHAH", university: "Nawabshah Campus",
+                campus: "", trainers: "124", trainerNote: "",
+                totDays: "3 Days ToT", dates: "11 – 16 May 2026", target: "5,800"
+            },
+        ];
+
+        const TOTAL = 12;
+
+        // ── Gallery ──────────────────────────────────────────────────────────────────
+        function Gallery({ images }) {
+            const [idx, setIdx] = useState(0);
+            const trackRef = useRef(null);
+            const dragStart = useRef(null);
+            // We keep a state of valid images, removing any that fail to load
+            const [validImages, setValidImages] = useState(images);
+
+            const handleImageError = (failedSrc) => {
+                setValidImages(prev => prev.filter(src => src !== failedSrc));
+            };
+
+            const go = useCallback((dir) => {
+                setIdx(prev => {
+                    const n = validImages.length;
+                    if (!n) return 0;
+                    return (prev + dir + n) % n;
+                });
+            }, [validImages.length]);
+
+            const goTo = useCallback((i) => setIdx(i), []);
+
+            const onTouchStart = (e) => { dragStart.current = e.touches[0].clientX; };
+            const onTouchEnd = (e) => {
+                if (dragStart.current == null) return;
+                const dx = e.changedTouches[0].clientX - dragStart.current;
+                if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+                dragStart.current = null;
+            };
+            const onMouseDown = (e) => { dragStart.current = e.clientX; };
+            const onMouseUp = (e) => {
+                if (dragStart.current == null) return;
+                const dx = e.clientX - dragStart.current;
+                if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1);
+                dragStart.current = null;
+            };
+
+            return (
+                // FIXED: Added height:"100%" so the column doesn't infinitely stretch
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0, height: "100%" }}>
+                    <div
+                        onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}
+                        onMouseDown={onMouseDown} onMouseUp={onMouseUp}
+                        style={{
+                            position: "relative", flex: 1, borderRadius: 14,
+                            border: `1px solid ${CARD_BORDER}`, overflow: "hidden",
+                            background: "rgba(0,0,0,0.03)", cursor: "grab", userSelect: "none", minHeight: 0, height: "100%",
+                            boxShadow: "inset 0 2px 10px rgba(0,0,0,0.02)"
+                        }}>
+
+                        {validImages.length === 0 ? (
+                            <div style={{
+                                width: "100%", height: "100%", display: "flex", flexDirection: "column",
+                                alignItems: "center", justifyContent: "center", gap: 12, opacity: .4
+                            }}>
+                                <div style={{ fontSize: 40 }}>📷</div>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 700, letterSpacing: "0.1em",
+                                    textTransform: "uppercase", color: TEXT, textAlign: "center", padding: "0 20px"
+                                }}>
+                                    Place 1.jpg, 2.jpg inside the camp folder to display images
+                                </div>
+                            </div>
+                        ) : (
+                            <div ref={trackRef} style={{
+                                display: "flex", height: "100%", width: "100%",
+                                transform: `translateX(${-idx * 100}%)`,
+                                transition: "transform 0.42s cubic-bezier(0.4,0,0.2,1)",
+                            }}>
+                                {validImages.map((src, i) => (
+                                    // FIXED: Made relative, so the absolute image maps perfectly inside this box without stretching it
+                                    <div key={src} style={{ flexShrink: 0, width: "100%", height: "100%", position: "relative" }}>
+                                        <img
+                                            src={src}
+                                            alt="Camp Photo"
+                                            onError={() => handleImageError(src)}
+                                            // FIXED: Absolute inset:0 forces the image to strictly obey the parent's boundaries
+                                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                            draggable={false}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {validImages.length > 1 && (<>
+                            <button className="g-arrow-btn" onClick={() => go(-1)} style={{
+                                position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)",
+                                width: 34, height: 34, borderRadius: "50%", border: `1px solid rgba(0,0,0,0.1)`,
+                                background: "rgba(255,255,255,0.85)", color: TEXT, fontSize: 18, display: "flex",
+                                alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)"
+                            }}>‹</button>
+                            <button className="g-arrow-btn" onClick={() => go(1)} style={{
+                                position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                                width: 34, height: 34, borderRadius: "50%", border: `1px solid rgba(0,0,0,0.1)`,
+                                background: "rgba(255,255,255,0.85)", color: TEXT, fontSize: 18, display: "flex",
+                                alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)"
+                            }}>›</button>
+                            <div style={{
+                                position: "absolute", bottom: 10, right: 12,
+                                background: "rgba(255,255,255,0.9)", border: `1px solid rgba(0,0,0,0.1)`,
+                                borderRadius: 999, padding: "3px 10px", fontSize: 10, fontWeight: 800, color: TEXT,
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                            }}>
+                                {idx + 1} / {validImages.length}
+                            </div>
+                        </>)}
+                    </div>
+
+                    {validImages.length > 1 && (
+                        <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+                            {validImages.map((_, i) => (
+                                <div key={i} className="nav-dot-el" onClick={() => goTo(i)} style={{
+                                    height: 7, borderRadius: 4,
+                                    background: i === idx ? GOLD : "rgba(0,0,0,0.15)",
+                                    width: i === idx ? 22 : 7,
+                                }} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ── Camp Slide ────────────────────────────────────────────────────────────────
+        function CampSlide({ camp, slideNum, total, animKey }) {
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <div className="rev1" style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        padding: "22px 52px 0", position: "relative", zIndex: 10
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: "50%", background: GOLD }} />
+                            <span style={{
+                                fontSize: 11, fontWeight: 800, letterSpacing: "0.18em",
+                                textTransform: "uppercase", opacity: .6, color: TEXT
+                            }}>SDPI — DFLT Program</span>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", opacity: .4, color: TEXT }}>
+                            {String(slideNum).padStart(2, "0")} / {String(total).padStart(2, "0")}
+                        </span>
+                    </div>
+
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "row",
+                        gap: 28, padding: "20px 52px 80px", alignItems: "stretch", minHeight: 0
+                    }}>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 14, width: 300, flexShrink: 0 }}>
+                            <div className="rev2">
+                                <Eyebrow>University Camp · {camp.district}</Eyebrow>
+                                <div style={{
+                                    fontSize: 24, fontWeight: 900, color: TEXT, lineHeight: 1.15,
+                                    letterSpacing: "-0.015em", marginBottom: 4
+                                }}>{camp.university}</div>
+                                {camp.campus && <div style={{ fontSize: 13, opacity: .6, fontWeight: 600, color: TEXT }}>{camp.campus}</div>}
+                                <div style={{ marginTop: 12 }}><GoldLine animKey={animKey} /></div>
+                            </div>
+
+                            <div className="rev3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                                <div className="card-hover" style={{
+                                    ...card({ padding: "16px 12px" }),
+                                    textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 5
+                                }}>
+                                    <span style={{ fontSize: 24 }}>👥</span>
+                                    <div style={{ fontSize: 26, fontWeight: 900, color: GOLD }}>{camp.trainers}</div>
+                                    <div style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: "0.1em",
+                                        textTransform: "uppercase", opacity: .5, color: TEXT
+                                    }}>Trainers</div>
+                                    {camp.trainerNote && <div style={{ fontSize: 9, opacity: .5, color: TEXT, fontWeight: 600 }}>{camp.trainerNote}</div>}
+                                </div>
+                                <div className="card-hover" style={{
+                                    ...card({ padding: "16px 12px" }),
+                                    textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 5
+                                }}>
+                                    <span style={{ fontSize: 24 }}>🎯</span>
+                                    <div style={{ fontSize: 26, fontWeight: 900, color: GOLD }}>{camp.target}</div>
+                                    <div style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: "0.1em",
+                                        textTransform: "uppercase", opacity: .5, color: TEXT
+                                    }}>Beneficiaries</div>
+                                </div>
+                            </div>
+
+                            <div className="card-hover rev4" style={{
+                                ...card({ padding: "16px 18px" }), display: "flex",
+                                flexDirection: "column", gap: 10
+                            }}>
+                                <InfoRow icon="📋"><strong>{camp.totDays}</strong></InfoRow>
+                                <InfoRow icon="📅">{camp.dates}</InfoRow>
+                                <InfoRow icon="📍">{camp.district} District — Flood Priority Zone</InfoRow>
+                            </div>
+
+                            <div className="rev5">
+                                <div style={{
+                                    fontSize: 10, fontWeight: 800, letterSpacing: "0.16em",
+                                    textTransform: "uppercase", color: GOLD, opacity: .9, marginBottom: 4
+                                }}>
+                                    {camp.district} Camp — Photos
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* FIXED: Added height:"100%" to the parent container wrapping the Gallery */}
+                        <div className="rev3" style={{
+                            flex: 1, display: "flex", flexDirection: "column",
+                            gap: 8, minWidth: 0, minHeight: 0, height: "100%"
+                        }}>
+                            <Gallery images={CAMP_IMAGES[camp.id]} />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ── Background ────────────────────────────────────────────────────────────────
+        function MeshBg() {
+            return (
+                <div style={{
+                    position: "absolute", inset: 0, zIndex: 0,
+                    background: `linear-gradient(145deg, ${BG} 0%, ${BG2} 100%)`
+                }}>
+                    <div style={{
+                        position: "absolute", inset: 0,
+                        backgroundImage: "radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px)",
+                        backgroundSize: "36px 36px"
+                    }} />
+                </div>
+            );
+        }
+
+        // ── TopBar ────────────────────────────────────────────────────────────────────
+        function TopBar({ num, total }) {
+            return (
+                <div className="rev1" style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "22px 52px 0", position: "relative", zIndex: 10
+                }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: GOLD }} />
+                        <span style={{
+                            fontSize: 11, fontWeight: 800, letterSpacing: "0.18em",
+                            textTransform: "uppercase", opacity: .6, color: TEXT
+                        }}>SDPI — DFLT Program</span>
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", opacity: .4, color: TEXT }}>
+                        {String(num).padStart(2, "0")} / {String(total).padStart(2, "0")}
+                    </span>
+                </div>
+            );
+        }
+
+        // ── SLIDES ────────────────────────────────────────────────────────────────────
+        function SlideTitle({ animKey, total }) {
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <div className="float" style={{
+                        position: "absolute", right: 80, top: "50%",
+                        transform: "translateY(-50%)", width: 300, height: 300, borderRadius: "50%",
+                        border: "1px solid rgba(180,83,9,0.15)", zIndex: 1
+                    }}>
+                        <div style={{
+                            position: "absolute", inset: 24, borderRadius: "50%",
+                            border: "1px solid rgba(180,83,9,0.1)"
+                        }} />
+                        <div style={{
+                            position: "absolute", inset: 0, display: "flex", alignItems: "center",
+                            justifyContent: "center", fontSize: 80, opacity: .05
+                        }}>🌍</div>
+                    </div>
+                    <TopBar num={1} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        justifyContent: "center", padding: "0 52px 80px", maxWidth: 680, gap: 0
+                    }}>
+                        <div className="rev2"><Eyebrow>DFLT Program · GIZ Partnership</Eyebrow></div>
+                        <div className="rev3" style={{
+                            fontSize: "clamp(34px,4.5vw,56px)", fontWeight: 900,
+                            lineHeight: 1.05, letterSpacing: "-0.02em", color: TEXT, marginBottom: 20
+                        }}>
+                            DFLT Training Camp Model<br />
+                            <span style={{ color: GOLD, fontSize: "clamp(24px, 3.5vw, 42px)", display: "block", marginTop: 10 }}>In Collaboration with Universities (MOU Signoffs)</span>
+                        </div>
+                        <div className="rev3" style={{ marginBottom: 22 }}><GoldLine animKey={animKey} /></div>
+                        <p className="rev4" style={{
+                            fontSize: 15, fontWeight: 500, opacity: .7, lineHeight: 1.65,
+                            maxWidth: 560, color: TEXT, marginBottom: 36
+                        }}>
+                            Scaling community empowerment across priority districts through an innovative University Camp Model — Training of Trainers approach.
+                        </p>
+                        <div className="rev5" style={{ display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", marginBottom: 32 }}>
+                            <StatBlock num="300K" label="Total Target" />
+                            <div style={{ width: 1, height: 44, background: "rgba(0,0,0,0.1)" }} />
+                            <StatBlock num="4" label="Priority Districts" />
+                            <div style={{ width: 1, height: 44, background: "rgba(0,0,0,0.1)" }} />
+                            <StatBlock num="ToT" label="Delivery Model" />
+                        </div>
+                        <div className="rev6" style={{
+                            display: "flex", alignItems: "center", gap: 10,
+                            opacity: .6, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: TEXT
+                        }}>
+                            <span>Team Lead: Dr. Fareeha</span>
+                            <span style={{ opacity: .4 }}>·</span>
+                            <span>DFLT Program · SDPI</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideOverview({ animKey, total }) {
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <TopBar num={2} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        padding: "28px 52px 80px", gap: 0
+                    }}>
+                        <div className="rev2" style={{ marginBottom: 24 }}>
+                            <Eyebrow>What is DFLT?</Eyebrow>
+                            <div style={{
+                                fontSize: 36, fontWeight: 900, color: TEXT, letterSpacing: "-0.015em",
+                                marginBottom: 6
+                            }}>Program <span style={{ color: GOLD }}>Overview</span></div>
+                            <GoldLine animKey={animKey} />
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, flex: 1 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {[
+                                    { icon: "💻", title: "Digital Literacy", sub: "Digital tools", cls: "rev3" },
+                                    { icon: "💰", title: "Financial Literacy", sub: "Banking · Mobile money · Savings & budgeting", cls: "rev4" },
+                                    { icon: "🌱", title: "Climate Change Awareness", sub: "Flood resilience · Adaptation strategies", cls: "rev5" },
+                                    { icon: "⚖️", title: "Gender Equality", sub: "Rights · Inclusion · Women's empowerment", cls: "rev6" },
+                                ].map(p => (
+                                    <div key={p.title} className={`card-hover ${p.cls}`} style={{
+                                        ...card({ padding: "16px 20px" }),
+                                        display: "flex", alignItems: "center", gap: 14
+                                    }}>
+                                        <span style={{ fontSize: 26, flexShrink: 0 }}>{p.icon}</span>
+                                        <div>
+                                            <div style={{ fontSize: 14, fontWeight: 800, color: TEXT, marginBottom: 3 }}>{p.title}</div>
+                                            <div style={{ fontSize: 11, opacity: .7, fontWeight: 600, color: TEXT }}>{p.sub}</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="card-hover rev3" style={{
+                                ...card({ padding: "24px 28px" }),
+                                display: "flex", flexDirection: "column", gap: 20
+                            }}>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 800, letterSpacing: "0.14em",
+                                    textTransform: "uppercase", opacity: .5, color: TEXT
+                                }}>Core Program Targets</div>
+                                <div>
+                                    <div style={{
+                                        display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                                        marginBottom: 8
+                                    }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>Mamta Beneficiaries
+                                            <span style={{ opacity: .6, fontWeight: 500 }}> (SSPA)</span></div>
+                                        <div style={{ fontSize: 18, fontWeight: 900, color: GOLD }}>1,25,000</div>
+                                    </div>
+                                    <ProgBar pct={42} animKey={animKey} />
+                                    <div style={{ fontSize: 10, opacity: .6, marginTop: 5, fontWeight: 700, color: TEXT }}>42% of total</div>
+                                </div>
+                                <div>
+                                    <div style={{
+                                        display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                                        marginBottom: 8
+                                    }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>Agriculture Beneficiaries</div>
+                                        <div style={{ fontSize: 18, fontWeight: 900, color: GOLD }}>1,65,000</div>
+                                    </div>
+                                    <ProgBar pct={55} animKey={animKey} />
+                                    <div style={{ fontSize: 10, opacity: .6, marginTop: 5, fontWeight: 700, color: TEXT }}>55% of total · flood-prone priority zones</div>
+                                </div>
+                                <div>
+                                    <div style={{
+                                        display: "flex", justifyContent: "space-between", alignItems: "baseline",
+                                        marginBottom: 8
+                                    }}>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>Urban informal workers in Karachi</div>
+                                        <div style={{ fontSize: 18, fontWeight: 900, color: GOLD }}>10,000</div>
+                                    </div>
+                                    <ProgBar pct={3} animKey={animKey} />
+                                    <div style={{ fontSize: 10, opacity: .6, marginTop: 5, fontWeight: 700, color: TEXT }}>3% of total</div>
+                                </div>
+                                <div style={{
+                                    borderTop: "1px solid rgba(0,0,0,0.08)", paddingTop: 16,
+                                    display: "flex", justifyContent: "space-between", alignItems: "center"
+                                }}>
+                                    <span style={{ fontSize: 12, opacity: .6, fontWeight: 600, color: TEXT }}>Grand Total</span>
+                                    <span style={{ fontSize: 28, fontWeight: 900, color: GOLD }}>3,00,000</span>
+                                </div>
+                                <div style={{
+                                    background: "rgba(180,83,9,0.05)", border: "1px solid rgba(180,83,9,0.2)",
+                                    borderRadius: 10, padding: "12px 14px", fontSize: 11, opacity: .9,
+                                    lineHeight: 1.6, fontWeight: 600, color: TEXT
+                                }}>
+                                    📍 Focus Implementation Areas:<br />
+                                    <strong style={{ color: GOLD, opacity: 1 }}>Badin · Sanghar · Sujawal · Thatta</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideModel({ animKey, total }) {
+            const phases = [
+                {
+                    icon: "🏛️", phase: "Phase 1", title: "University Partnership",
+                    desc: "Collaborate with local universities to identify and engage student trainers on campus.",
+                    details: [["Duration", "Varies"], ["Format", "On-campus"]], cls: "rev3"
+                },
+                {
+                    icon: "📋", phase: "Phase 2", title: "Training of Trainers (ToT)",
+                    desc: "Mandatory 3 day intensive ToT to certify student trainers before field deployment.",
+                    details: [["Duration", "3 Days"], ["Format", "Classroom + Practical"]], cls: "rev4"
+                },
+                {
+                    icon: "🏘️", phase: "Phase 3", title: "Field Deployment",
+                    desc: "Fully Trained Pairs Deployed in Communities via led by IC, 3 Training sessions by 1 pair / per week.",
+                    details: [["Sessions", "3 trainings per week"], ["Field Wrap up", "Before 4:30 PM"]], cls: "rev5"
+                },
+            ];
+            const flow = ["SDPI Trainers", "University ToT", "Pre-Mobilisation", "IC + Trainers Deploy", "✓ Beneficiaries Trained"];
+
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <TopBar num={3} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        padding: "28px 52px 80px", gap: 0
+                    }}>
+                        <div className="rev2" style={{ marginBottom: 24 }}>
+                            <Eyebrow>Delivery Methodology</Eyebrow>
+                            <div style={{ fontSize: 36, fontWeight: 900, color: TEXT, letterSpacing: "-0.015em", marginBottom: 6 }}>
+                                University <span style={{ color: GOLD }}>Camp Model</span></div>
+                            <GoldLine animKey={animKey} />
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 14 }}>
+                            {phases.map(p => (
+                                <div key={p.title} className={`card-hover ${p.cls}`} style={{
+                                    ...card({ padding: "22px 20px" }),
+                                    display: "flex", flexDirection: "column", gap: 10
+                                }}>
+                                    <span style={{ fontSize: 32 }}>{p.icon}</span>
+                                    <Badge>{p.phase}</Badge>
+                                    <div style={{ fontSize: 15, fontWeight: 800, color: TEXT }}>{p.title}</div>
+                                    <div style={{ fontSize: 12, opacity: .7, fontWeight: 500, color: TEXT, lineHeight: 1.6 }}>{p.desc}</div>
+                                    <div style={{
+                                        borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 10,
+                                        display: "flex", flexDirection: "column", gap: 5
+                                    }}>
+                                        {p.details.map(([k, v]) => (
+                                            <div key={k} style={{
+                                                display: "flex", justifyContent: "space-between",
+                                                fontSize: 11, fontWeight: 700
+                                            }}>
+                                                <span style={{ opacity: .6, color: TEXT }}>{k}</span>
+                                                <span style={{ color: GOLD }}>{v}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="card-hover rev6" style={{
+                            ...card({ padding: "16px 24px" }),
+                            display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap"
+                        }}>
+                            <span style={{
+                                fontSize: 10, fontWeight: 800, letterSpacing: "0.14em",
+                                textTransform: "uppercase", opacity: .5, color: TEXT, whiteSpace: "nowrap"
+                            }}>Flow</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, flexWrap: "wrap" }}>
+                                {flow.map((s, i) => (
+                                    <div key={s} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <div style={{
+                                            padding: "8px 14px", borderRadius: 8, fontSize: 11, fontWeight: 800,
+                                            background: i === flow.length - 1 ? "rgba(180,83,9,0.12)" : "rgba(0,0,0,0.04)",
+                                            border: `1px solid ${i === flow.length - 1 ? 'rgba(180,83,9,0.3)' : 'rgba(0,0,0,0.08)'}`,
+                                            color: i === flow.length - 1 ? GOLD : TEXT, whiteSpace: "nowrap"
+                                        }}>{s}</div>
+                                        {i < flow.length - 1 && <span style={{ color: GOLD, opacity: .6, fontSize: 14 }}>→</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideLogistics({ animKey, total }) {
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <TopBar num={4} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        padding: "28px 52px 80px", gap: 0
+                    }}>
+                        <div className="rev2" style={{ marginBottom: 22 }}>
+                            <Eyebrow>Field Operations</Eyebrow>
+                            <div style={{ fontSize: 36, fontWeight: 900, color: TEXT, letterSpacing: "-0.015em", marginBottom: 6 }}>
+                                Logistics <span style={{ color: GOLD }}>Framework</span></div>
+                            <GoldLine animKey={animKey} />
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, flex: 1 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+                                    color: GOLD, opacity: .9
+                                }}>Pre-Mobilisation</div>
+                                <div className="card-hover rev3" style={{
+                                    ...card({ padding: "16px 18px" }), flex: 1,
+                                    display: "flex", flexDirection: "column", gap: 12
+                                }}>
+                                    <InfoRow icon="👩‍💼"><strong>Local Mobilizer Network on Boarding</strong><br />Mobilization with Local Mobilizer Network hired by SDPI </InfoRow>
+                                    <InfoRow icon="👩‍💼"><strong>IC + Trainers Deployment</strong><br />Pre - Mobilized and assigned Locations led by IC </InfoRow>
+                                    <InfoRow icon="📍"><strong>Monitoring</strong><br />On Ground Monitring by SDPI HQ Team on all IC's independently via Dashboard</InfoRow>
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+                                    color: GOLD, opacity: .9
+                                }}>Transport Structure</div>
+                                <div className="card-hover rev4" style={{
+                                    ...card({ padding: "20px 18px" }), flex: 1,
+                                    display: "flex", flexDirection: "column", gap: 14
+                                }}>
+                                    <div style={{
+                                        fontSize: 10, fontWeight: 800, letterSpacing: "0.12em",
+                                        textTransform: "uppercase", opacity: .5, color: TEXT
+                                    }}>Per High-Roof Unit</div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                        {[{ n: "1", l: "IC / High-Roof" }, { n: "8", l: "Trainer Pairs" }].map(s => (
+                                            <div key={s.l} style={{
+                                                background: "rgba(0,0,0,0.03)", borderRadius: 10,
+                                                padding: "12px", textAlign: "center", display: "flex", flexDirection: "column",
+                                                alignItems: "center", gap: 4
+                                            }}>
+                                                <div style={{ fontSize: 24, fontWeight: 900, color: GOLD }}>{s.n}</div>
+                                                <div style={{
+                                                    fontSize: 9, fontWeight: 800, letterSpacing: "0.1em",
+                                                    textTransform: "uppercase", opacity: .6, color: TEXT
+                                                }}>{s.l}</div>
+                                            </div>
+                                        ))}
+                                        <div style={{
+                                            background: "rgba(0,0,0,0.03)", borderRadius: 10, padding: "12px",
+                                            textAlign: "center", gridColumn: "1/-1", display: "flex", flexDirection: "column",
+                                            alignItems: "center", gap: 4
+                                        }}>
+                                            <div style={{ fontSize: 24, fontWeight: 900, color: GOLD }}>16</div>
+                                            <div style={{
+                                                fontSize: 9, fontWeight: 800, letterSpacing: "0.1em",
+                                                textTransform: "uppercase", opacity: .6, color: TEXT
+                                            }}>Trainers per High-Roof</div>
+                                        </div>
+                                    </div>
+                                    <InfoRow icon="🚐">Rented High-Roofs — one per IC</InfoRow>
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+                                    color: GOLD, opacity: .9
+                                }}>Refreshments &amp; Materials</div>
+                                <div className="card-hover rev5" style={{
+                                    ...card({ padding: "16px 18px" }), flex: 1,
+                                    display: "flex", flexDirection: "column", gap: 10
+                                }}>
+                                    <InfoRow icon="🪧"><strong>1 ATM Standee (Sindhi translated)</strong></InfoRow>
+                                    <InfoRow icon="📚"><strong>DFLT Handbook for Beneficiaries</strong><br />as per pair</InfoRow>
+                                    <InfoRow icon="🥪"><strong>Light refreshment</strong><br />water cooler + juice + light snacks</InfoRow>
+                                    <div style={{
+                                        borderTop: "1px solid rgba(0,0,0,0.06)", paddingTop: 10,
+                                        display: "flex", flexDirection: "column", gap: 7
+                                    }}>
+                                        <InfoRow icon="⏰"><strong>Field Wrap up before 4:30 PM</strong></InfoRow>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideStats({ animKey, total }) {
+            const districts = [
+                { name: "Badin (UOS Laar)", val: "7,500", pct: 100 },
+                { name: "Nawabshah", val: "5,800", pct: 77 },
+                { name: "Sanghar (SBBU)", val: "3,940", pct: 53 },
+                { name: "Thatta (UOS)", val: "3,800", pct: 51 },
+            ];
+            const highlights = [
+                { icon: "🌟", text: <><strong>Highest single-camp:</strong> 7,500 at Badin — 84 trainers, 3-day ToT</> },
+                { icon: "♀️", text: <><strong>Gender leadership:</strong> Sanghar was 86% female trainers (72 of 84)</> },
+                { icon: "🚀", text: <><strong>Largest team:</strong> 124 trainers mobilised at Nawabshah</> },
+                { icon: "📈", text: <><strong>Consistency:</strong> 4 camps in &lt;45 days across all priority districts</> },
+                { icon: "🤝", text: <><strong>12 permanent trainers</strong> supplemented university cohort at Thatta</> },
+            ];
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <TopBar num={9} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        padding: "28px 52px 80px", gap: 0
+                    }}>
+                        <div className="rev2" style={{ marginBottom: 22 }}>
+                            <Eyebrow>Cumulative Performance</Eyebrow>
+                            <div style={{ fontSize: 36, fontWeight: 900, color: TEXT, letterSpacing: "-0.015em", marginBottom: 6 }}>
+                                Program <span style={{ color: GOLD }}>at a Glance</span></div>
+                            <GoldLine animKey={animKey} />
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }}>
+                            {[{ icon: "🏫", n: "4", l: "University\nCamps", cls: "rev3" }, { icon: "👥", n: "378", l: "Student\nTrainers", cls: "rev4" },
+                            { icon: "🎯", n: "21,040", l: "Beneficiaries\nTrained", cls: "rev5" }, { icon: "📅", n: "<45", l: "Days\nExecution", cls: "rev6" }
+                            ].map(s => (
+                                <div key={s.l} className={`card-hover ${s.cls}`} style={{
+                                    ...card({ padding: "20px 14px" }),
+                                    textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 6
+                                }}>
+                                    <span style={{ fontSize: 28 }}>{s.icon}</span>
+                                    <div style={{ fontSize: "clamp(22px,2.5vw,32px)", fontWeight: 900, color: GOLD }}>{s.n}</div>
+                                    <div style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase",
+                                        opacity: .6, color: TEXT, whiteSpace: "pre-line", lineHeight: 1.4
+                                    }}>{s.l}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, flex: 1 }}>
+                            <div className="card-hover rev4" style={{
+                                ...card({ padding: "22px 24px" }),
+                                display: "flex", flexDirection: "column", gap: 14
+                            }}>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 800, letterSpacing: "0.14em",
+                                    textTransform: "uppercase", opacity: .5, color: TEXT
+                                }}>District Reach</div>
+                                {districts.map(d => (
+                                    <div key={d.name}>
+                                        <div style={{
+                                            display: "flex", justifyContent: "space-between", fontSize: 12,
+                                            fontWeight: 700, marginBottom: 6, color: TEXT
+                                        }}>
+                                            <span>{d.name}</span><span style={{ color: GOLD }}>{d.val}</span>
+                                        </div>
+                                        <ProgBar pct={d.pct} animKey={animKey} />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="card-hover rev5" style={{
+                                ...card({ padding: "22px 24px" }),
+                                display: "flex", flexDirection: "column", gap: 12
+                            }}>
+                                <div style={{
+                                    fontSize: 11, fontWeight: 800, letterSpacing: "0.14em",
+                                    textTransform: "uppercase", opacity: .5, color: TEXT
+                                }}>Key Highlights</div>
+                                {highlights.map((h, i) => (
+                                    <InfoRow key={i} icon={h.icon}><span style={{ fontSize: 13 }}>{h.text}</span></InfoRow>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideTable({ animKey, total }) {
+            const rows = [
+                { campus: "Shaheed Benazir Bhutto University - Sanghar Campus", district: "Sanghar", trainers: "84", note: "(12M+72F)", tot: "2", dates: "6–11 Apr 2026", ben: "3,940" },
+                { campus: "University of Sindh - Thatta Campus", district: "Thatta", trainers: "86", note: "(74+12 perm.)", tot: "3", dates: "13–18 Apr 2026", ben: "3,800" },
+                { campus: "University of Sindh - Laar Campus", district: "Badin", trainers: "84", note: "", tot: "3", dates: "29 Apr–4 May 2026", ben: "7,500" },
+                { campus: "Shaheed Benazir Bhutto University - Nawabshah Campus", district: "Nawabshah", trainers: "124", note: "", tot: "3", dates: "11–16 May 2026", ben: "5,800" },
+            ];
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <TopBar num={10} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        padding: "28px 52px 80px", gap: 0
+                    }}>
+                        <div className="rev2" style={{ marginBottom: 24 }}>
+                            <Eyebrow>All Camps Summary</Eyebrow>
+                            <div style={{ fontSize: 36, fontWeight: 900, color: TEXT, letterSpacing: "-0.015em", marginBottom: 6 }}>
+                                Consolidated <span style={{ color: GOLD }}>Results</span></div>
+                            <GoldLine animKey={animKey} />
+                        </div>
+                        <div className="card-hover rev3" style={{ ...card({ overflow: "hidden" }), flex: 1 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                                <thead>
+                                    <tr style={{ background: "rgba(180,83,9,0.06)", borderBottom: `1px solid rgba(180,83,9,0.15)` }}>
+                                        {["Campus", "District", "Trainers", "ToT Days", "Dates", "Beneficiaries"].map(h => (
+                                            <th key={h} style={{
+                                                padding: "16px 18px", textAlign: h === "Beneficiaries" ? "right" : "left",
+                                                fontSize: 10, fontWeight: 800, letterSpacing: "0.14em", textTransform: "uppercase",
+                                                opacity: .7, color: TEXT
+                                            }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((r, i) => (
+                                        <tr key={r.campus} style={{
+                                            borderBottom: "1px solid rgba(0,0,0,0.04)",
+                                            background: i % 2 === 1 ? "rgba(0,0,0,0.015)" : "transparent"
+                                        }}>
+                                            <td style={{ padding: "18px 18px", fontWeight: 800, color: TEXT }}>{r.campus}</td>
+                                            <td style={{ padding: "18px 18px", opacity: .7, fontWeight: 600, color: TEXT }}>{r.district}</td>
+                                            <td style={{ padding: "18px 18px", fontWeight: 800, color: GOLD }}>
+                                                {r.trainers} <span style={{ fontSize: 11, opacity: .7, color: TEXT }}>{r.note}</span></td>
+                                            <td style={{ padding: "18px 18px", fontWeight: 700, color: TEXT }}>{r.tot}</td>
+                                            <td style={{ padding: "18px 18px", opacity: .7, fontWeight: 600, color: TEXT }}>{r.dates}</td>
+                                            <td style={{
+                                                padding: "18px 18px", textAlign: "right", fontSize: 18,
+                                                fontWeight: 900, color: GOLD
+                                            }}>{r.ben}</td>
+                                        </tr>
+                                    ))}
+                                    <tr style={{ background: "rgba(180,83,9,0.08)" }}>
+                                        <td colSpan={5} style={{
+                                            padding: "18px 18px", fontWeight: 900, fontSize: 14,
+                                            color: GOLD
+                                        }}>TOTAL</td>
+                                        <td style={{
+                                            padding: "18px 18px", textAlign: "right", fontSize: 24,
+                                            fontWeight: 900, color: GOLD
+                                        }}>21,040</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideVideo({ animKey, total }) {
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <TopBar num={11} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        padding: "28px 52px 80px", gap: 0
+                    }}>
+                        <div className="rev2" style={{ marginBottom: 24 }}>
+                            <Eyebrow>Visual Journey</Eyebrow>
+                            <div style={{ fontSize: 36, fontWeight: 900, color: TEXT, letterSpacing: "-0.015em", marginBottom: 6 }}>
+                                Program <span style={{ color: GOLD }}>Documentary</span></div>
+                            <GoldLine animKey={animKey} />
+                        </div>
+
+                        <div className="card-hover rev3" style={{ ...card({ padding: "12px" }), flex: 1, display: "flex", flexDirection: "column" }}>
+                            <div style={{ flex: 1, background: "linear-gradient(135deg, #0F172A, #1E293B)", borderRadius: 10, overflow: "hidden", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,0.1)" }}>
+
+                                <video controls style={{ width: "100%", height: "100%", objectFit: "contain", position: "absolute", inset: 0, zIndex: 2 }}>
+                                    <source src="./documentary/video.mp4" type="video/mp4" />
+                                </video>
+
+                                <div style={{ position: "absolute", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 1 }}>
+                                    <div style={{ fontSize: 48, filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.3))" }}>🎥</div>
+                                    <div style={{ color: "#F8FAFC", fontSize: 16, fontWeight: 800, letterSpacing: "0.1em" }}>DOCUMENTARY VIDEO</div>
+                                    <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 600 }}>Please add 'video.mp4' into the 'documentary' folder</div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SlideForward({ animKey, total }) {
+            const pillars = [
+                { icon: "🏗️", title: "Expand Partnerships", desc: "New campuses across Sujawal and remaining Sindh districts", cls: "rev4" },
+                { icon: "📊", title: "Data-Driven Targeting", desc: "Mamta + Agriculture beneficiary mapping for saturation", cls: "rev5" },
+                { icon: "🤝", title: "GIZ Collaboration", desc: "Joint monitoring, quality assurance and impact reporting", cls: "rev6" },
+            ];
+            return (
+                <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+                    <MeshBg />
+                    <div className="float" style={{
+                        position: "absolute", right: 60, top: "50%",
+                        transform: "translateY(-50%)", width: 260, height: 260, borderRadius: "50%",
+                        border: "1px solid rgba(180,83,9,0.1)", zIndex: 1
+                    }}>
+                        <div style={{
+                            position: "absolute", inset: 0, display: "flex", alignItems: "center",
+                            justifyContent: "center", fontSize: 70, opacity: .05
+                        }}>🎯</div>
+                    </div>
+                    <TopBar num={12} total={total} />
+                    <div style={{
+                        position: "relative", zIndex: 10, flex: 1, display: "flex", flexDirection: "column",
+                        justifyContent: "center", padding: "0 52px 80px", maxWidth: 740, gap: 0
+                    }}>
+                        <div className="rev2"><Eyebrow>Path Forward</Eyebrow></div>
+                        <div className="rev3" style={{
+                            fontSize: "clamp(28px,3.5vw,44px)", fontWeight: 900,
+                            lineHeight: 1.1, letterSpacing: "-0.018em", color: TEXT, marginBottom: 6
+                        }}>
+                            Scaling to <span style={{ color: GOLD }}>3,00,000</span> Beneficiaries
+                        </div>
+                        <div className="rev3" style={{ marginBottom: 18 }}><GoldLine animKey={animKey} /></div>
+                        <p className="rev4" style={{
+                            fontSize: 15, fontWeight: 500, opacity: .7, lineHeight: 1.65,
+                            maxWidth: 580, color: TEXT, marginBottom: 28
+                        }}>
+                            With proven university camp infrastructure, certified trainer pools, and IC-led logistics — DFLT is positioned to rapidly scale across all priority flood districts.
+                        </p>
+                        <div className="rev4" style={{
+                            display: "grid", gridTemplateColumns: "repeat(3,1fr)",
+                            gap: 12, marginBottom: 28
+                        }}>
+                            {pillars.map(p => (
+                                <div key={p.title} className={`card-hover ${p.cls}`} style={{
+                                    ...card({ padding: "20px 18px" }),
+                                    display: "flex", flexDirection: "column", gap: 10
+                                }}>
+                                    <span style={{ fontSize: 28 }}>{p.icon}</span>
+                                    <div style={{ fontSize: 14, fontWeight: 900, color: TEXT }}>{p.title}</div>
+                                    <div style={{ fontSize: 12, opacity: .7, fontWeight: 500, color: TEXT, lineHeight: 1.6 }}>{p.desc}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="rev7" style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            opacity: .6, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", color: TEXT
+                        }}>
+                            <span>Dr. Fareeha · Team Lead, DFLT</span>
+                            <span style={{ opacity: .4 }}>·</span><span>SDPI</span>
+                            <span style={{ opacity: .4 }}>·</span><span>GIZ Partnership</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ── APP ──────────────────────────────────────────────────────────────────────
+        function App() {
+            const [current, setCurrent] = useState(0);
+            const [animKey, setAnimKey] = useState(0);
+            const transitioning = useRef(false);
+
+            const goTo = useCallback((idx) => {
+                if (transitioning.current || idx === current || idx < 0 || idx >= TOTAL) return;
+                transitioning.current = true;
+                setCurrent(idx);
+                setAnimKey(k => k + 1);
+                setTimeout(() => { transitioning.current = false; }, 650);
+            }, [current]);
+
+            const change = useCallback((dir) => goTo(current + dir), [current, goTo]);
+
+            useEffect(() => {
+                const handler = (e) => {
+                    if (["ArrowRight", "ArrowDown", " "].includes(e.key)) { e.preventDefault(); change(1); }
+                    if (["ArrowLeft", "ArrowUp"].includes(e.key)) { e.preventDefault(); change(-1); }
+                };
+                window.addEventListener("keydown", handler);
+                return () => window.removeEventListener("keydown", handler);
+            }, [change]);
+
+            const getSlide = (i) => {
+                if (i === 0) return <SlideTitle animKey={animKey} total={TOTAL} />;
+                if (i === 1) return <SlideOverview animKey={animKey} total={TOTAL} />;
+                if (i === 2) return <SlideModel animKey={animKey} total={TOTAL} />;
+                if (i === 3) return <SlideLogistics animKey={animKey} total={TOTAL} />;
+                if (i >= 4 && i <= 7) return <CampSlide camp={CAMPS[i - 4]} slideNum={i + 1} total={TOTAL} animKey={animKey} />;
+                if (i === 8) return <SlideStats animKey={animKey} total={TOTAL} />;
+                if (i === 9) return <SlideTable animKey={animKey} total={TOTAL} />;
+                if (i === 10) return <SlideVideo animKey={animKey} total={TOTAL} />;
+                if (i === 11) return <SlideForward animKey={animKey} total={TOTAL} />;
+            };
+
+            return (
+                <div style={{
+                    width: "100vw", height: "100vh", background: BG, overflow: "hidden",
+                    fontFamily: "'Montserrat',sans-serif", color: TEXT, position: "relative"
+                }}>
+                    <style>{globalStyle}</style>
+
+                    <div key={current} className="slide-in" style={{ position: "absolute", inset: 0 }}>
+                        {getSlide(current)}
+                    </div>
+
+                    <div style={{
+                        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "14px 52px 20px",
+                        background: `linear-gradient(transparent, ${BG} 55%)`
+                    }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", opacity: .4, color: TEXT, minWidth: 60 }}>
+                            {String(current + 1).padStart(2, "0")} / {String(TOTAL).padStart(2, "0")}
+                        </span>
+                        <div style={{ display: "flex", gap: 7 }}>
+                            {Array.from({ length: TOTAL }).map((_, i) => (
+                                <div key={i} className="nav-dot-el" onClick={() => goTo(i)} style={{
+                                    height: 7, borderRadius: 4, cursor: "pointer",
+                                    background: i === current ? GOLD : "rgba(0,0,0,0.15)",
+                                    width: i === current ? 22 : 7,
+                                }} />
+                            ))}
+                        </div>
+                        <div style={{ display: "flex", gap: 10 }}>
+                            <button className="nav-btn" onClick={() => change(-1)} disabled={current === 0} style={{
+                                width: 42, height: 42, borderRadius: "50%", border: "1px solid rgba(0,0,0,0.1)",
+                                background: "rgba(255,255,255,0.8)", color: TEXT, fontSize: 18,
+                                display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(5px)",
+                                opacity: current === 0 ? .3 : 1
+                            }}>←</button>
+                            <button className="nav-btn" onClick={() => change(1)} disabled={current === TOTAL - 1} style={{
+                                width: 42, height: 42, borderRadius: "50%", border: "1px solid rgba(0,0,0,0.1)",
+                                background: "rgba(255,255,255,0.8)", color: TEXT, fontSize: 18,
+                                display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(5px)",
+                                opacity: current === TOTAL - 1 ? .3 : 1
+                            }}>→</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
